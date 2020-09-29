@@ -1,0 +1,18 @@
+apply plugin: 'com.android.application'
+
+android {
+    signingConfigs {
+        develop {
+            keyAlias 'basictomodular'
+            keyPassword 'basictomodular'
+            storeFile file('basictomodular.jks')
+            storePassword 'basictomodular'
+        }
+        release {
+            keyAlias 'basictomodular'
+            keyPassword 'basictomodular'
+            storeFile file('basictomodular.jks')
+            storePassword 'basictomodular'
+        }
+    }
+}

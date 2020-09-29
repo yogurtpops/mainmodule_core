@@ -15,7 +15,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.0.0+1
+version: 2.5.3+1020503
 
 environment:
   sdk: ">=2.7.0 <3.0.0"
@@ -37,7 +37,8 @@ dependencies:
 #    git:
 #      url: git://github.com/yogurtpops/imageeditor.git
   permission_handler: any
-
+  googleapis: ^0.54.0
+  fluttertoast: ^7.1.1
 
 dev_dependencies:
   flutter_test:
@@ -55,31 +56,6 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  assets:
-    - packages/util/assets/images/
-    - packages/util/assets/images/kesan_1.jpg
-    - packages/util/assets/images/kesan_2.jpg
-    - packages/util/assets/images/kesan_3.jpg
-    - packages/util/assets/images/kesan_4.jpg
-    - packages/util/assets/images/kesan_5.jpg
-    - packages/util/assets/images/kesan_6.jpg
-    - packages/util/assets/images/kesan_7.jpg
-    - packages/util/assets/images/kesan_8.jpg
-    - packages/util/assets/images/kesan_9.jpg
-    - packages/util/assets/images/kesan_10.jpg
-    - packages/util/assets/images/signika.svg
-    - packages/util/assets/images/fredoka.svg
-    - packages/util/assets/images/meiranda.svg
-    - packages/util/assets/images/overpass.svg
-    - packages/util/assets/images/timesroman.svg
-    - packages/util/assets/images/align-right.svg
-    - packages/util/assets/images/align-center.svg
-    - packages/util/assets/images/align-left.svg
-    - packages/util/assets/images/font_size.svg
-    - packages/util/assets/images/camera.svg
-    - packages/util/assets/images/close.svg
-    - packages/util/assets/images/undo.svg
-    - packages/util/assets/images/redo.svg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.
@@ -92,22 +68,22 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
-  fonts:
-    - family: FredokaOneRegular
-      fonts:
-        - asset: packages/util/assets/fonts/FredokaOne-Regular.ttf
-    - family: MeriendaRegular
-      fonts:
-        - asset: packages/util/assets/fonts/Merienda-Regular.ttf
-    - family: OverpassRegular
-      fonts:
-        - asset: packages/util/assets/fonts/Overpass-Regular.ttf
-    - family: SignikaRegular
-      fonts:
-        - asset: packages/util/assets/fonts/Signika-Regular.ttf
-    - family: TimesNewRoman
-      fonts:
-        - asset: packages/util/assets/fonts/Times-New-Roman.ttf
+#  fonts:
+#    - family: FredokaOneRegular
+#      fonts:
+#        - asset: packages/util/assets/fonts/FredokaOne-Regular.ttf
+#    - family: MeriendaRegular
+#      fonts:
+#        - asset: packages/util/assets/fonts/Merienda-Regular.ttf
+#    - family: OverpassRegular
+#      fonts:
+#        - asset: packages/util/assets/fonts/Overpass-Regular.ttf
+#    - family: SignikaRegular
+#      fonts:
+#        - asset: packages/util/assets/fonts/Signika-Regular.ttf
+#    - family: TimesNewRoman
+#      fonts:
+#        - asset: packages/util/assets/fonts/Times-New-Roman.ttf
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages

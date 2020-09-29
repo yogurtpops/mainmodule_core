@@ -63,17 +63,16 @@ class StateSecondTab extends State<SecondTab> {
 
   checkIfImageEditorModuleFileExist() async {
     bool packExist = await checkIfPackIsDownloaded(IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE);
-    if (packExist){
-      Modular.to.pushNamed('/imageeditor').then((value) => setState((){
+     if (packExist){
+       print('pack is downloaded');
+       Modular.to.pushNamed('/imageeditor').then((value) => setState((){
+         showLoading = false;
+       }));
+     } else {
+      print('pack not yet downloaded');
+      Modular.to.pushNamed('/download').then((value) => setState((){
         showLoading = false;
       }));
-      print('pack is downloaded');
-    } else {
-      downloadPack(IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE);
-      print('pack not yet downloaded');
-      setState(() {
-        showLoading = false;
-      });
     }
   }
   
