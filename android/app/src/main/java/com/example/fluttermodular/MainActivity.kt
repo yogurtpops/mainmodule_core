@@ -221,8 +221,8 @@ class MainActivity: FlutterActivity(), IDownloaderClient, MethodChannel.MethodCa
                 val xAPKS = arrayOf(
                         XAPKFile(
                                 true,  // true signifies a main file
-                                2020504, //getPackageManager().getPackageInfo(getPackageName(), 0).versionCode,  // the version of the APK that the file was uploaded against
-                                1582531L // the length of the file in bytes
+                                2020507, //getPackageManager().getPackageInfo(getPackageName(), 0).versionCode,  // the version of the APK that the file was uploaded against
+                                15446074L // the length of the file in bytes
                         )
                 )
 
@@ -365,8 +365,8 @@ class MainActivity: FlutterActivity(), IDownloaderClient, MethodChannel.MethodCa
         val xAPKS = arrayOf(
                 XAPKFile(
                         true,  // true signifies a main file
-                        2020504, //getPackageManager().getPackageInfo(getPackageName(), 0).versionCode,  // the version of the APK that the file was uploaded against
-                        1582531 // the length of the file in bytes
+                        2020507, //getPackageManager().getPackageInfo(getPackageName(), 0).versionCode,  // the version of the APK that the file was uploaded against
+                        15446074L // the length of the file in bytes
                 )
         )
 

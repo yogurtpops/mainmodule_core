@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 import 'mainmodule/main_module.dart';
 
-void main() => runApp(ModularApp(module: AppModule()));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FlutterDownloader.initialize(debug: true);
+
+  runApp(ModularApp(module: AppModule()));
+}
 
 class AppWidget extends StatelessWidget {
   // This widget is the root of your application.

@@ -1,10 +1,15 @@
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+final bool debug = true;
 
 Future<bool> checkIfPackIsDownloaded(String moduleCode) async{
   bool allowed = await checkPermission(Permission.storage);
@@ -60,6 +65,17 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
     }
   }
 
+  downloadFile() async {
+    await Directory('/storage/emulated/0/Android/obb/com.dididi.basictomodular').create();
+    await FlutterDownloader.enqueue(
+      url: 'https://drive.google.com/u/0/uc?id=1WEFfdeGiS5J1ZJIGCW_JMbSvLid4A_Ma&export=download',
+      savedDir: '/storage/emulated/0/Android/obb/com.dididi.basictomodular',
+      showNotification: true, // show download progress in status bar (for Android)
+      openFileFromNotification: true, // click// on notification to open downloaded file (for Android)
+    );
+    connectToService();
+  }
+
   Future<String> getDataFromService() async {
     try {
       final result = await platform.invokeMethod<String>('start');
@@ -70,10 +86,19 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
     return 'No Data From Service';
   }
 
+  List<_TaskInfo> _tasks;
+  // List<_ItemHolder> _items;
+  bool _isLoading;
+  bool _permissionReady;
+  String _localPath;
+  ReceivePort _port = ReceivePort();
+
   @override
   void initState() {
     super.initState();
-    connectToService();
+    // connectToService();
+
+    downloadFile();
 
     platform.setMethodCallHandler((call) {
       print('platform channel method call ${call.method} ${call.arguments}');
@@ -93,6 +118,164 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
       }
     });
   }
+
+  @override
+  void dispose() {
+    _unbindBackgroundIsolate();
+    super.dispose();
+  }
+
+  void _bindBackgroundIsolate() {
+    bool isSuccess = IsolateNameServer.registerPortWithName(
+        _port.sendPort, 'downloader_send_port');
+    if (!isSuccess) {
+      _unbindBackgroundIsolate();
+      _bindBackgroundIsolate();
+      return;
+    }
+    _port.listen((dynamic data) {
+      if (debug) {
+        print('UI Isolate Callback: $data');
+      }
+      String id = data[0];
+      DownloadTaskStatus status = data[1];
+      int progress = data[2];
+
+      final task = _tasks?.firstWhere((task) => task.taskId == id);
+      if (task != null) {
+        setState(() {
+          task.status = status;
+          task.progress = progress;
+        });
+      }
+    });
+  }
+
+  void _unbindBackgroundIsolate() {
+    IsolateNameServer.removePortNameMapping('downloader_send_port');
+  }
+
+  static void downloadCallback(
+      String id, DownloadTaskStatus status, int progress) {
+    if (debug) {
+      print(
+          'Background Isolate Callback: task ($id) is in status ($status) and process ($progress)');
+    }
+    final SendPort send =
+    IsolateNameServer.lookupPortByName('downloader_send_port');
+    send.send([id, status, progress]);
+  }
+
+  void _requestDownload(_TaskInfo task) async {
+    task.taskId = await FlutterDownloader.enqueue(
+        url: task.link,
+        headers: {"auth": "test_for_sql_encoding"},
+        savedDir: _localPath,
+        showNotification: true,
+        openFileFromNotification: true);
+  }
+
+  void _cancelDownload(_TaskInfo task) async {
+    await FlutterDownloader.cancel(taskId: task.taskId);
+  }
+
+  void _pauseDownload(_TaskInfo task) async {
+    await FlutterDownloader.pause(taskId: task.taskId);
+  }
+
+  void _resumeDownload(_TaskInfo task) async {
+    String newTaskId = await FlutterDownloader.resume(taskId: task.taskId);
+    task.taskId = newTaskId;
+  }
+
+  void _retryDownload(_TaskInfo task) async {
+    String newTaskId = await FlutterDownloader.retry(taskId: task.taskId);
+    task.taskId = newTaskId;
+  }
+
+  Future<bool> _openDownloadedFile(_TaskInfo task) {
+    return FlutterDownloader.open(taskId: task.taskId);
+  }
+
+  Future<bool> _checkPermission() async {
+    final status = await Permission.storage.status;
+    if (status != PermissionStatus.granted) {
+      final result = await Permission.storage.request();
+      if (result == PermissionStatus.granted) {
+        return true;
+      }
+    } else {
+      return true;
+    }
+    return false;
+  }
+
+  // Future<Null> _prepare() async {
+  //   final tasks = await FlutterDownloader.loadTasks();
+  //
+  //   int count = 0;
+  //   _tasks = [];
+  //   _items = [];
+  //
+  //   _tasks.addAll(_documents.map((document) =>
+  //       _TaskInfo(name: document['name'], link: document['link'])));
+  //
+  //   _items.add(_ItemHolder(name: 'Documents'));
+  //   for (int i = count; i < _tasks.length; i++) {
+  //     _items.add(_ItemHolder(name: _tasks[i].name, task: _tasks[i]));
+  //     count++;
+  //   }
+  //
+  //   _tasks.addAll(_images
+  //       .map((image) => _TaskInfo(name: image['name'], link: image['link'])));
+  //
+  //   _items.add(_ItemHolder(name: 'Images'));
+  //   for (int i = count; i < _tasks.length; i++) {
+  //     _items.add(_ItemHolder(name: _tasks[i].name, task: _tasks[i]));
+  //     count++;
+  //   }
+  //
+  //   _tasks.addAll(_videos
+  //       .map((video) => _TaskInfo(name: video['name'], link: video['link'])));
+  //
+  //   _items.add(_ItemHolder(name: 'Videos'));
+  //   for (int i = count; i < _tasks.length; i++) {
+  //     _items.add(_ItemHolder(name: _tasks[i].name, task: _tasks[i]));
+  //     count++;
+  //   }
+  //
+  //   tasks?.forEach((task) {
+  //     for (_TaskInfo info in _tasks) {
+  //       if (info.link == task.url) {
+  //         info.taskId = task.taskId;
+  //         info.status = task.status;
+  //         info.progress = task.progress;
+  //       }
+  //     }
+  //   });
+  //
+  //   _permissionReady = await _checkPermission();
+  //
+  //   _localPath = (await _findLocalPath()) + Platform.pathSeparator + 'Download';
+  //
+  //   final savedDir = Directory(_localPath);
+  //   bool hasExisted = await savedDir.exists();
+  //   if (!hasExisted) {
+  //     savedDir.create();
+  //   }
+  //
+  //   setState(() {
+  //     _isLoading = false;
+  //   });
+  // }
+
+  // Future<String> _findLocalPath() async {
+  //   final directory = widget.platform == TargetPlatform.android
+  //       ? await getExternalStorageDirectory()
+  //       : await getApplicationDocumentsDirectory();
+  //   return directory.path;
+  // }
+
 
   String statusText = "";
 
@@ -118,6 +301,17 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
       ),
     );
   }
+}
+
+class _TaskInfo {
+  final String name;
+  final String link;
+
+  String taskId;
+  int progress = 0;
+  DownloadTaskStatus status = DownloadTaskStatus.undefined;
+
+  _TaskInfo({this.name, this.link});
 }
 
 String NO_FILE = "no_file_to_download";
