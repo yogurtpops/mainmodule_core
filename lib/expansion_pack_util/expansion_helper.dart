@@ -78,31 +78,49 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
     platform.setMethodCallHandler((call) {
       print('platform channel method call ${call.method} ${call.arguments}');
       if (call.method=="updateDownloadState"){
-        Fluttertoast.showToast(
-            msg: call.arguments,
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.CENTER,
-            timeInSecForIosWeb: 1,
-            backgroundColor: Colors.red,
-            textColor: Colors.white,
-            fontSize: 16.0
-        );
-        if (call.arguments=="STATE_COMPLETED"){
-          print('download complete');
+        setState(() {
+          statusText = call.arguments;
+        });
+        if (call.arguments==EXTRACT_FAILED){
           Modular.to.pop();
+        } else if (call.arguments==DONE_EXTRACT){
+          Modular.to.pushReplacementNamed("/imageeditor");
+        } else if (call.arguments==START_EXTRACT){
+          setState(() {
+            statusText = "Extracting downloaded files...";
+          });
         }
       }
     });
   }
 
+  String statusText = "";
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('Modular App'),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Center(
+            child: CircularProgressIndicator(),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top:68.0),
+            child: Text(statusText),
+          )
+        ],
       ),
     );
   }
 }
 
 String NO_FILE = "no_file_to_download";
+String DONE_EXTRACT = "done_extraxt";
+String EXTRACT_FAILED = "extract_failed";
+String START_EXTRACT = "start_extraxt";

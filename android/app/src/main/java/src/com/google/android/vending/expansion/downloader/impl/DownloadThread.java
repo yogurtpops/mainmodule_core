@@ -24,11 +24,11 @@ import android.os.Process;
 import android.preference.PreferenceActivity;
 import android.util.Log;
 
-import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.conn.params.ConnRouteParams;
+import cz.msebera.android.httpclient.Header;
+import cz.msebera.android.httpclient.HttpHost;
+import cz.msebera.android.httpclient.HttpResponse;
+import cz.msebera.android.httpclient.client.methods.HttpGet;
+import cz.msebera.android.httpclient.conn.params.ConnRouteParams;
 
 import java.io.File;
 import java.io.FileNotFoundException;

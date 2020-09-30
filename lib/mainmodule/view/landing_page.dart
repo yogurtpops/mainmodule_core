@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:fluttermodular/expansion_pack_util/expansion_helper.dart';
 
-final String IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE = "/storage/emulated/0/Android/obb/com.dididi.basictomodular/main.0300110.com.dididi.basictomodular.obb";
+final String IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE = "/storage/emulated/0/com.dididi.basictomodular";
 
 class LandingPage extends StatefulWidget {
   @override

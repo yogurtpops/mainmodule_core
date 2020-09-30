@@ -88,6 +88,12 @@ android {
         }
     }
 
+    configurations {
+        all {
+            exclude group: 'commons-logging', module: 'commons-logging'
+        }
+    }
+
     packagingOptions {
         exclude 'META-INF/DEPENDENCIES'
         exclude 'META-INF/LICENSE'
@@ -101,6 +107,8 @@ android {
     }
 }
 
+
+
 flutter {
     source '../..'
 }
@@ -112,7 +120,6 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.0.1'
-
-    compile 'org.apache.httpcomponents:httpclient:4.5'
+    implementation "cz.msebera.android:httpclient:4.4.1.2"
 
 }

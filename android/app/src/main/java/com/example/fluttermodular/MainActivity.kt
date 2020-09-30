@@ -1,5 +1,6 @@
 package com.example.fluttermodular
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -10,20 +11,26 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.View
 import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.engine.systemchannels.PlatformChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import src.com.DownloaderService
 import src.com.DownloaderServiceBroadcastReceiver
 import src.com.android.vending.expansion.zipfile.ZipResourceFile
 import src.com.google.android.vending.expansion.downloader.*
-import java.io.DataInputStream
-import java.io.IOException
+import java.io.*
 import java.util.zip.CRC32
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+
 
 class MainActivity: FlutterActivity(), IDownloaderClient, MethodChannel.MethodCallHandler {
 
     val TAG = "Main Activity....."
+    val DOWNLOAD_TAG_METHOD = "updateDownloadState"
+    val DONE_EXTRACT = "done_extraxt"
+    val EXTRACT_FAILED = "extract_failed"
+    val START_EXTRACT = "start_extraxt"
+
     val CHANNEL = "basictomodular/downloadservice"
     var myReceiver: DownloaderServiceBroadcastReceiver? = null
     var keepResult: MethodChannel.Result? = null
@@ -45,15 +52,7 @@ class MainActivity: FlutterActivity(), IDownloaderClient, MethodChannel.MethodCa
 
     // region Expansion Downloader
     private class XAPKFile internal constructor(val mIsMain: Boolean, val mFileVersion: Int, val mFileSize: Long)
-
-    private val xAPKS = arrayOf(
-            XAPKFile(
-                    true,  // true signifies a main file
-                    1020503,  // the version of the APK that the file was uploaded against
-                    1582531 // the length of the file in bytes
-            )
-    )
-
+    
     private val SMOOTHING_FACTOR = 0.005f
 
     /**
@@ -106,58 +105,76 @@ class MainActivity: FlutterActivity(), IDownloaderClient, MethodChannel.MethodCa
         val paused: Boolean
         val indeterminate: Boolean
 
-        methodChannel.invokeMethod(TAG,newState)
+        methodChannel.invokeMethod(TAG, newState)
 
         when (newState) {
 
             IDownloaderClient.STATE_IDLE -> {
                 paused = false
                 indeterminate = true
-                methodChannel.invokeMethod("updateDownloadState","STATE_IDLE")
+                methodChannel.invokeMethod("updateDownloadState", "STATE_IDLE")
             }
             IDownloaderClient.STATE_CONNECTING, IDownloaderClient.STATE_FETCHING_URL -> {
                 showDashboard = true
                 paused = false
                 indeterminate = true
-                methodChannel.invokeMethod("updateDownloadState","STATE_CONNECTING")
+                methodChannel.invokeMethod("updateDownloadState", "STATE_CONNECTING")
             }
 
             IDownloaderClient.STATE_DOWNLOADING -> {
                 paused = false
                 showDashboard = true
                 indeterminate = false
-                methodChannel.invokeMethod("updateDownloadState","STATE_DOWNLOADING")
+                methodChannel.invokeMethod("updateDownloadState", "STATE_DOWNLOADING")
             }
 
-            IDownloaderClient.STATE_FAILED_CANCELED, IDownloaderClient.STATE_FAILED, IDownloaderClient.STATE_FAILED_FETCHING_URL, IDownloaderClient.STATE_FAILED_UNLICENSED -> {
+            IDownloaderClient.STATE_FAILED_CANCELED -> {
                 paused = true
                 showDashboard = false
                 indeterminate = false
-                methodChannel.invokeMethod("updateDownloadState","STATE_FAILED_CANCELED")
+                methodChannel.invokeMethod("updateDownloadState", "STATE_FAILED_CANCELED")
+            }
+            IDownloaderClient.STATE_FAILED -> {
+                paused = true
+                showDashboard = false
+                indeterminate = false
+                methodChannel.invokeMethod("updateDownloadState", "STATE_FAILED")
+            }
+            IDownloaderClient.STATE_FAILED_FETCHING_URL -> {
+                paused = true
+                showDashboard = false
+                indeterminate = false
+                methodChannel.invokeMethod("updateDownloadState", "STATE_FAILED_FETCHING_URL")
+            }
+            IDownloaderClient.STATE_FAILED_UNLICENSED -> {
+                paused = true
+                showDashboard = false
+                indeterminate = false
+                methodChannel.invokeMethod("updateDownloadState", "STATE_FAILED_UNLICENSED")
             }
             IDownloaderClient.STATE_PAUSED_NEED_CELLULAR_PERMISSION, IDownloaderClient.STATE_PAUSED_WIFI_DISABLED_NEED_CELLULAR_PERMISSION -> {
                 showDashboard = false
                 paused = true
                 indeterminate = false
                 showCellMessage = true
-                methodChannel.invokeMethod("updateDownloadState","STATE_PAUSED_NEED_CELLULAR_PERMISSION")
+                methodChannel.invokeMethod("updateDownloadState", "STATE_PAUSED_NEED_CELLULAR_PERMISSION")
             }
             IDownloaderClient.STATE_PAUSED_BY_REQUEST -> {
                 paused = true
                 indeterminate = false
-                methodChannel.invokeMethod("updateDownloadState","STATE_PAUSED_BY_REQUEST")
+                methodChannel.invokeMethod("updateDownloadState", "STATE_PAUSED_BY_REQUEST")
             }
             IDownloaderClient.STATE_PAUSED_ROAMING, IDownloaderClient.STATE_PAUSED_SDCARD_UNAVAILABLE -> {
                 paused = true
                 indeterminate = false
-                methodChannel.invokeMethod("updateDownloadState","STATE_PAUSED_ROAMING")
+                methodChannel.invokeMethod("updateDownloadState", "STATE_PAUSED_ROAMING")
             }
             IDownloaderClient.STATE_COMPLETED -> {
                 showDashboard = false
                 paused = false
                 indeterminate = false
                 validateXAPKZipFiles()
-                methodChannel.invokeMethod("updateDownloadState","STATE_COMPLETED")
+                methodChannel.invokeMethod("updateDownloadState", "STATE_COMPLETED")
                 return
             }
             else -> {
@@ -193,7 +210,7 @@ class MainActivity: FlutterActivity(), IDownloaderClient, MethodChannel.MethodCa
      */
     fun validateXAPKZipFiles() {
         Log.d(TAG, "validateXAPKZipFiles");
-
+        methodChannel.invokeMethod(DOWNLOAD_TAG_METHOD, START_EXTRACT)
         val validationTask: AsyncTask<Any, DownloadProgressInfo, Boolean> = object : AsyncTask<Any, DownloadProgressInfo, Boolean>() {
             override fun onPreExecute() {
 //                mDownloadViewGroup!!.visibility = View.VISIBLE
@@ -201,10 +218,19 @@ class MainActivity: FlutterActivity(), IDownloaderClient, MethodChannel.MethodCa
             }
 
             override fun doInBackground(vararg params: Any): Boolean {
+                val xAPKS = arrayOf(
+                        XAPKFile(
+                                true,  // true signifies a main file
+                                2020504, //getPackageManager().getPackageInfo(getPackageName(), 0).versionCode,  // the version of the APK that the file was uploaded against
+                                1582531L // the length of the file in bytes
+                        )
+                )
+
                 for (xf in xAPKS) {
                     var fileName = Helpers.getExpansionAPKFileName(context, xf.mIsMain, xf.mFileVersion)
                     if (!Helpers.doesFileExist(context, fileName, xf.mFileSize, false)) return false
                     fileName = Helpers.generateSaveFileName(context, fileName)
+                    Log.d(TAG, "new filename " + fileName);
                     var zrf: ZipResourceFile
                     val buf = ByteArray(1024 * 256)
                     try {
@@ -236,7 +262,7 @@ class MainActivity: FlutterActivity(), IDownloaderClient, MethodChannel.MethodCa
                                     dis = DataInputStream(zrf.getInputStream(entry.mFileName))
                                     var startTime = SystemClock.uptimeMillis()
                                     while (length > 0) {
-                                        val seek = (if (length > buf.size) buf.size else length) as Int
+                                        val seek = (if (length > buf.size) buf.size else length.toInt())
                                         dis.readFully(buf, 0, seek)
                                         crc.update(buf, 0, seek)
                                         length -= seek.toLong()
@@ -266,8 +292,52 @@ class MainActivity: FlutterActivity(), IDownloaderClient, MethodChannel.MethodCa
                                 }
                             }
                         }
+
+                        Log.d(TAG, "file extraction start from " + fileName);
+
+                        var path = "/storage/emulated/0/com.dididi.basictomodular/"
+                        var `is`: InputStream?
+                        var zis: ZipInputStream
+                        try {
+                            val folder = "/storage/emulated/0";
+                            val f = File(folder, "com.dididi.basictomodular")
+                            f.mkdir()
+
+                            `is` = FileInputStream(fileName)
+                            zis = ZipInputStream(BufferedInputStream(`is`))
+                            while(true) {
+                                var ze = zis?.getNextEntry()
+                                if (ze == null){
+                                    break
+                                }
+                                val baos = ByteArrayOutputStream()
+                                val buffer = ByteArray(1024)
+                                val filename: String = ze.getName()
+                                val fout = FileOutputStream(path + filename)
+
+                                // reading and writing
+                                while(true){
+                                    var count = zis.read(buffer)
+                                    if (count == -1){
+                                        break
+                                    }
+                                    baos.write(buffer, 0, count)
+                                    val bytes: ByteArray = baos.toByteArray()
+                                    fout.write(bytes)
+                                    baos.reset()
+                                }
+
+                                fout.close()
+                                zis.closeEntry()
+                            }
+                            zis.close()
+                        } catch (e: IOException) {
+                            e.printStackTrace()
+                            return false
+                        }
                     } catch (e: IOException) {
                         e.printStackTrace()
+                        Log.d(TAG, "file extraction err " + e.message);
                         return false
                     }
                 }
@@ -281,9 +351,9 @@ class MainActivity: FlutterActivity(), IDownloaderClient, MethodChannel.MethodCa
 
             override fun onPostExecute(result: Boolean) {
                 if (result) {
-//                    mDownloadViewGroup!!.visibility = View.GONE
+                    methodChannel.invokeMethod(DOWNLOAD_TAG_METHOD, DONE_EXTRACT)
                 } else {
-//                    mDownloadViewGroup!!.visibility = View.VISIBLE
+                    methodChannel.invokeMethod(DOWNLOAD_TAG_METHOD, EXTRACT_FAILED)
                 }
                 super.onPostExecute(result)
             }
@@ -292,8 +362,17 @@ class MainActivity: FlutterActivity(), IDownloaderClient, MethodChannel.MethodCa
     }
 
     fun expansionFilesDelivered(): Boolean {
+        val xAPKS = arrayOf(
+                XAPKFile(
+                        true,  // true signifies a main file
+                        2020504, //getPackageManager().getPackageInfo(getPackageName(), 0).versionCode,  // the version of the APK that the file was uploaded against
+                        1582531 // the length of the file in bytes
+                )
+        )
+
         for (xf in xAPKS) {
             val fileName = Helpers.getExpansionAPKFileName(this, xf.mIsMain, xf.mFileVersion)
+            Log.d(TAG, "filename " + fileName);
             if (!Helpers.doesFileExist(this, fileName, xf.mFileSize, false)) {
                 Log.d(TAG, "expansionFilesDelivered " + false);
                 return false

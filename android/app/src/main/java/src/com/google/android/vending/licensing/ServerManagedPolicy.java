@@ -16,8 +16,8 @@
 
 package src.com.google.android.vending.licensing;
 
-import org.apache.http.NameValuePair;
-import org.apache.http.client.utils.URLEncodedUtils;
+import cz.msebera.android.httpclient.NameValuePair;
+import cz.msebera.android.httpclient.client.utils.URLEncodedUtils;
 
 import java.net.URI;
 import java.net.URISyntaxException;
