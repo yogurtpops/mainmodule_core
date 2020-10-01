@@ -5,6 +5,8 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:fluttermodular/expansion_pack_util/expansion_helper.dart';
 
 final String IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE = "/storage/emulated/0/com.dididi.basictomodular";
+final String DOWNLOADED_IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE = "/storage/emulated/0/Android/obb/com.dididi.basictomodular";
+
 
 class LandingPage extends StatefulWidget {
   @override
@@ -38,8 +40,11 @@ class StateSecondTab extends State<SecondTab> {
           setState(() {
             showLoading = true;
           });
-          checkIfImageEditorModuleFileExist();
-        }),
+
+          print('process to loading page');
+          Modular.to.pushNamed('/download').then((value) => setState((){
+            showLoading = false;
+          }));        }),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -62,12 +67,26 @@ class StateSecondTab extends State<SecondTab> {
   }
 
   checkIfImageEditorModuleFileExist() async {
-    bool packExist = await checkIfPackIsDownloaded(IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE);
-     if (packExist){
+    bool downloadPackExist = await checkIfPackIsDownloaded(DOWNLOADED_IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE);
+     if (downloadPackExist){
        print('pack is downloaded');
        Modular.to.pushNamed('/imageeditor').then((value) => setState((){
          showLoading = false;
        }));
+
+       bool extractedPackExist = await checkIfPackIsDownloaded(IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE);
+       if (extractedPackExist){
+         print('pack is extracted');
+         Modular.to.pushNamed('/imageeditor').then((value) => setState((){
+           showLoading = false;
+         }));
+       } else {
+         print('pack not yet downloaded');
+         Modular.to.pushNamed('/download').then((value) => setState((){
+           showLoading = false;
+         }));
+       }
+
      } else {
       print('pack not yet downloaded');
       Modular.to.pushNamed('/download').then((value) => setState((){
@@ -82,7 +101,8 @@ class StateLandingPage extends State<LandingPage> {
   int _currentIndex = 0;
 
   var _selectedWidget = [
-    Text('This is Landing Page'),
+    Container(
+        child: Center(child: Text('This is Landing Page'))),
     SecondTab()
   ];
 

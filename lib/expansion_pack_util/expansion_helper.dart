@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:fluttermodular/mainmodule/view/landing_page.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -65,15 +66,8 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
     }
   }
 
-  downloadFile() async {
-    await Directory('/storage/emulated/0/Android/obb/com.dididi.basictomodular').create();
-    await FlutterDownloader.enqueue(
-      url: 'https://drive.google.com/u/0/uc?id=1WEFfdeGiS5J1ZJIGCW_JMbSvLid4A_Ma&export=download',
-      savedDir: '/storage/emulated/0/Android/obb/com.dididi.basictomodular',
-      showNotification: true, // show download progress in status bar (for Android)
-      openFileFromNotification: true, // click// on notification to open downloaded file (for Android)
-    );
-    connectToService();
+  startDownloadFile() async {
+    _requestDownload();
   }
 
   Future<String> getDataFromService() async {
@@ -96,10 +90,9 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
   @override
   void initState() {
     super.initState();
-    // connectToService();
-
-    downloadFile();
-
+    _bindBackgroundIsolate();
+    FlutterDownloader.registerCallback(downloadCallback);
+    checkIfImageEditorModuleFileExist();
     platform.setMethodCallHandler((call) {
       print('platform channel method call ${call.method} ${call.arguments}');
       if (call.method=="updateDownloadState"){
@@ -109,6 +102,9 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
         if (call.arguments==EXTRACT_FAILED){
           Modular.to.pop();
         } else if (call.arguments==DONE_EXTRACT){
+          setState(() {
+            statusText = "Extracting success";
+          });
           Modular.to.pushReplacementNamed("/imageeditor");
         } else if (call.arguments==START_EXTRACT){
           setState(() {
@@ -117,6 +113,29 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
         }
       }
     });
+  }
+
+  checkIfImageEditorModuleFileExist() async {
+    bool downloadPackExist = await checkIfPackIsDownloaded(DOWNLOADED_IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE);
+    if (downloadPackExist){
+      print('pack is downloaded');
+      bool extractedPackExist = await checkIfPackIsDownloaded(IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE);
+      if (extractedPackExist){
+        print('pack is extracted');
+        Modular.to.pushReplacementNamed('/imageeditor').then((value) => setState((){
+          _isLoading = false;
+        }));
+      } else {
+        print('pack not yet extracted');
+        connectToService();
+      }
+    } else {
+      print('pack not yet downloaded');
+      setState(() {
+        statusText = "Downloading assets...";
+      });
+      startDownloadFile();
+    }
   }
 
   @override
@@ -135,7 +154,7 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
     }
     _port.listen((dynamic data) {
       if (debug) {
-        print('UI Isolate Callback: $data');
+        print('UI Isolate Callback: ${data[1].toString()}');
       }
       String id = data[0];
       DownloadTaskStatus status = data[1];
@@ -148,6 +167,12 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
           task.progress = progress;
         });
       }
+
+      if (data[1]==DownloadTaskStatus.complete || data[1]==DownloadTaskStatus.failed){
+        print('UI Isolate Callback: kompleeeet');
+        connectToService();
+      }
+
     });
   }
 
@@ -161,18 +186,19 @@ class StateExpansionDownloadPage extends State<ExpansionDownloadPage> {
       print(
           'Background Isolate Callback: task ($id) is in status ($status) and process ($progress)');
     }
-    final SendPort send =
-    IsolateNameServer.lookupPortByName('downloader_send_port');
+    final SendPort send = IsolateNameServer.lookupPortByName('downloader_send_port');
     send.send([id, status, progress]);
   }
 
-  void _requestDownload(_TaskInfo task) async {
-    task.taskId = await FlutterDownloader.enqueue(
-        url: task.link,
-        headers: {"auth": "test_for_sql_encoding"},
-        savedDir: _localPath,
-        showNotification: true,
-        openFileFromNotification: true);
+  void _requestDownload() async {
+    await Directory('/storage/emulated/0/Android/obb').create();
+    await Directory('/storage/emulated/0/Android/obb/com.dididi.basictomodular').create();
+    var id = await FlutterDownloader.enqueue(
+      url: 'https://drive.google.com/u/0/uc?id=1WEFfdeGiS5J1ZJIGCW_JMbSvLid4A_Ma&export=download',
+      savedDir: '/storage/emulated/0/Android/obb/com.dididi.basictomodular',
+      showNotification: true, // show download progress in status bar (for Android)
+      openFileFromNotification: true, // click// on notification to open downloaded file (for Android)
+    );
   }
 
   void _cancelDownload(_TaskInfo task) async {
