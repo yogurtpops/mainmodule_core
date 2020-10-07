@@ -15,7 +15,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 2.5.11+2020511
+version: 2.5.15+2020515
 
 environment:
   sdk: ">=2.7.0 <3.0.0"
@@ -30,17 +30,18 @@ dependencies:
   esys_flutter_share: ^1.0.2
   feather_icons_flutter: ^4.7.4
   util:
-    git:
-      url: git://github.com/yogurtpops/utilmodule.git
+    path: ../../project/utilmodule
+#    git:
+#      url: git://github.com/yogurtpops/utilmodule.git
   editormodule:
-      path: ../imageeditor
+    path: ../../project/imageeditor
 #    git:
 #      url: git://github.com/yogurtpops/imageeditor.git
   permission_handler: any
   googleapis: ^0.54.0
   fluttertoast: ^7.1.1
   flutter_downloader: ^1.5.1
-
+  shared_preferences: ^0.5.8
 
 dev_dependencies:
   flutter_test:

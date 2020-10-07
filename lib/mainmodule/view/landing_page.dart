@@ -1,12 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:fluttermodular/expansion_pack_util/expansion_helper.dart';
+import 'file:///home/tlab-n024/project/utilmodule/lib/util/preference.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final String IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE = "/storage/emulated/0/com.dididi.basictomodular";
 final String DOWNLOADED_IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE = "/storage/emulated/0/Android/obb/com.dididi.basictomodular";
-
 
 class LandingPage extends StatefulWidget {
   @override
@@ -25,6 +27,27 @@ class SecondTab extends StatefulWidget {
 
 class StateSecondTab extends State<SecondTab> {
   bool showLoading = false;
+  final String METHOD_PLAYASSET = "playasset";
+  final String KOTLIN_METHOD_GETASSET = "get_asset";
+  String statusText="Mohon tunggu";
+  static const platform = MethodChannel('basictomodular/downloadservice');
+
+  @override
+  void initState() async {
+    prefs = await SharedPreferences.getInstance();
+    platform.setMethodCallHandler((call) {
+      print('platform channel method call ${call.method} ${call.arguments}');
+      if (call.method==METHOD_PLAYASSET){
+        setState(() {
+          statusText = call.arguments;
+        });
+        if (!call.arguments.toString().contains("...")){
+          prefs.setString(Preferences().asset_directory, call.arguments);
+          Modular.to.pushReplacementNamed("/imageeditor");
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +55,16 @@ class StateSecondTab extends State<SecondTab> {
       height: MediaQuery.of(context).size.height,
       width: MediaQuery.of(context).size.width,
       child: Center(
-        child: CircularProgressIndicator(),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            CircularProgressIndicator(),
+            Padding(
+              padding: const EdgeInsets.only(top:48.0),
+              child: Text(statusText),
+            )
+          ],
+        ),
       ),
     ) :  Container(
       child: InkWell(
@@ -42,9 +74,11 @@ class StateSecondTab extends State<SecondTab> {
           });
 
           print('process to loading page');
-          Modular.to.pushNamed('/download').then((value) => setState((){
-            showLoading = false;
-          }));        }),
+          checkIfImageEditorAssetPackExist();
+          // Modular.to.pushNamed('/download').then((value) => setState((){
+          //   showLoading = false;
+          // }));
+        }),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -66,35 +100,20 @@ class StateSecondTab extends State<SecondTab> {
     );
   }
 
-  checkIfImageEditorModuleFileExist() async {
-    bool downloadPackExist = await checkIfPackIsDownloaded(DOWNLOADED_IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE);
-     if (downloadPackExist){
-       print('pack is downloaded');
-       Modular.to.pushNamed('/imageeditor').then((value) => setState((){
-         showLoading = false;
-       }));
+  SharedPreferences prefs;
 
-       bool extractedPackExist = await checkIfPackIsDownloaded(IMAGE_MODULE_EDITOR_EXPANSION_PACK_ACCESS_CODE);
-       if (extractedPackExist){
-         print('pack is extracted');
-         Modular.to.pushNamed('/imageeditor').then((value) => setState((){
-           showLoading = false;
-         }));
-       } else {
-         print('pack not yet downloaded');
-         Modular.to.pushNamed('/download').then((value) => setState((){
-           showLoading = false;
-         }));
-       }
-
-     } else {
-      print('pack not yet downloaded');
-      Modular.to.pushNamed('/download').then((value) => setState((){
-        showLoading = false;
-      }));
+  Future<void> checkIfImageEditorAssetPackExist() async {
+    try {
+      setState(() {
+        statusText = "Get asset directory";
+      });
+      await platform.invokeMethod<String>('get_asset', 'editorassetpack');
+    } catch (_){
+      setState(() {
+        statusText = "Error $_";
+      });
     }
   }
-  
 }
 
 class StateLandingPage extends State<LandingPage> {
